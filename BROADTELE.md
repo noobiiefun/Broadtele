@@ -15,60 +15,70 @@ Dua metode pengiriman dengan fallback otomatis:
 - [x] Hybrid: cek dulu apakah target bisa dilayani Bot API, kalau tidak fallback ke userbot
 - [x] Grup dan Japri **dipisah** — job, daftar target, dan setting delay berbeda
 - [x] Japri delay harus **lebih lama** dari grup (default grup 8–25s, japri 30–90s, keduanya bisa diubah di UI)
-- [x] Orang yang pernah chat ke bot (private message masuk) otomatis tercatat sebagai kandidat target Japri "prospek khusus" (tabel `bot_contacts`)
+- [x] Orang yang pernah chat ke bot otomatis tercatat sebagai kandidat target Japri "prospek khusus" (tabel `bot_contacts`)
 - [x] Randomisasi **urutan target** (Fisher-Yates shuffle) tiap job dijalankan
 - [x] Randomisasi **interval** (delay dengan jitter, bukan fixed) untuk hindari pola yang gampang kena flood-wait/rate-limit
-- [x] Eksekusi broadcast **sekuensial**, bukan paralel (paralel = red flag buat rate limiter Telegram)
+- [x] Eksekusi broadcast **sekuensial**, bukan paralel
 - [x] Wajib hormati `FLOOD_WAIT` dari Telegram API (tunggu sesuai durasi yang diminta, jangan diabaikan)
-- [x] Session userbot & token bot disimpan **encrypted** (bukan plain text)
+- [x] Login userbot lewat **dialog di UI** (nomor HP → OTP → password 2FA opsional), bukan prompt CLI
+- [x] Session userbot disimpan otomatis ke file lokal `.broadtele-session` (git-ignored) setelah login sukses — tidak perlu edit `.env` manual
 
 ## Struktur Database (SQLite — `better-sqlite3`)
 Lihat `src/db/schema.sql` untuk definisi lengkap.
 
-- `targets` — semua target (grup & personal), kolom `source` (bot/personal/both), `bot_can_send`
+- `targets` — semua target (grup & personal), kolom `source` (bot/personal/both), `bot_can_send`, `is_business_relation`
 - `broadcast_jobs` — satu job = satu pesan + satu target_type (grup/japri) + delay range
-- `broadcast_job_targets` — target per job, `order_index` di-shuffle saat job dibuat/dijalankan, status per target
+- `broadcast_job_targets` — target per job, `order_index` di-shuffle saat job dijalankan, status per target
 - `bot_contacts` — orang yang pernah DM bot (auto-populated dari `bot.js` listener)
 
 ## Struktur Project
 ```
 Broadtele/
-├── BROADTELE.md          <- dokumen ini
+├── BROADTELE.md          <- dokumen ini (tracker progres)
 ├── README.md
+├── SETUP.md               <- panduan setup step-by-step dari nol
+├── TROUBLESHOOTING.md      <- solusi error umum
 ├── package.json
 ├── .env.example
 ├── .gitignore
 ├── src/
-│   ├── main.js            <- Electron main process + IPC handlers
+│   ├── main.js             <- Electron main process, semua IPC handler, prompt login via UI
 │   ├── preload.js
+│   ├── config/
+│   │   └── sessionStore.js <- simpan/baca session string userbot dari file lokal
 │   ├── db/
 │   │   ├── schema.sql
-│   │   └── db.js          <- koneksi + helper query
+│   │   └── db.js
 │   ├── telegram/
-│   │   ├── userbot.js      <- GramJS wrapper (getDialogs, sendMessage, flood-wait handling)
-│   │   └── bot.js          <- node-telegram-bot-api wrapper (listen contacts, sendMessage)
+│   │   ├── userbot.js      <- GramJS wrapper (login via prompts, getDialogs, sendMessage, flood-wait)
+│   │   └── bot.js          <- node-telegram-bot-api wrapper (auto-catat grup & bot_contacts, sendMessage)
 │   ├── broadcast/
-│   │   ├── shuffle.js      <- Fisher-Yates
-│   │   ├── delay.js        <- randomDelay + sleep
-│   │   └── queue.js        <- orkestrasi job: shuffle -> loop -> pilih method -> kirim -> retry flood-wait
+│   │   ├── shuffle.js
+│   │   ├── delay.js
+│   │   └── queue.js
 │   └── renderer/
-│       └── index.html      <- UI dasar (placeholder, belum final)
+│       ├── index.html      <- UI: sidebar (Grup/Japri/Buat Broadcast/Log), modal login
+│       ├── style.css       <- tema "dispatch console" gelap, aksen mint/amber
+│       └── app.js           <- semua logic UI (vanilla JS, tanpa framework/build step)
 ```
 
 ## Status Saat Ini
-- [x] Scaffold project awal dibuat (schema, userbot wrapper, bot wrapper, shuffle, delay, queue skeleton, main process dasar)
-- [ ] UI renderer (list target dengan checkbox, form job, log realtime) — **belum dibuat, masih placeholder**
-- [ ] Login flow userbot (input nomor HP + OTP + 2FA password) di UI — belum
-- [ ] Setup BotFather token input di UI — belum
-- [ ] Testing flow end-to-end (bot invite ke grup test, userbot login, kirim job kecil) — belum
-- [ ] Encryption untuk session string & bot token (rencana pakai `keytar` atau `electron-store` dengan encryptionKey) — belum diimplementasi, saat ini masih baca dari `.env` untuk development
+- [x] Scaffold project awal (schema, userbot wrapper, bot wrapper, shuffle, delay, queue)
+- [x] **UI selesai** — tab Grup, Japri, Buat Broadcast, Log Pengiriman; tabel target dengan checkbox pilih & toggle relasi bisnis; form job dengan default delay otomatis sesuai tipe target; console log realtime dengan status per target
+- [x] Login userbot lewat UI (modal dialog nomor HP/OTP/password), session tersimpan otomatis
+- [x] Dokumentasi setup (`SETUP.md`) dan troubleshooting (`TROUBLESHOOTING.md`)
+- [ ] Encryption untuk `.broadtele-session` dan `TG_BOT_TOKEN` — **masih plain text**, rencana pakai `keytar` (OS credential manager)
+- [ ] Retry otomatis untuk error selain FLOOD_WAIT (target keluar grup, blokir bot, dll) — saat ini cuma dicatat sebagai `failed`, tidak retry
+- [ ] Riwayat job (daftar job lama + hasil per target) — saat ini log hanya menampilkan job yang sedang/terakhir jalan, belum ada tab riwayat
+- [ ] Tombol hapus/nonaktifkan target langsung dari UI (saat ini harus manual lewat database kalau ada duplikat, lihat `TROUBLESHOOTING.md`)
+- [ ] Edit pesan/target sebelum broadcast ulang (duplicate job) — belum ada
 
 ## Yang Perlu Diputuskan/Dikerjakan Berikutnya
-1. UI: bikin tampilan list target (grup + japri terpisah tab) dengan checkbox pilih target per job
-2. Login userbot: alur input nomor HP → kode OTP dari Telegram → (opsional 2FA password) → simpan session string
-3. Tandai target `is_business_relation` di UI supaya gampang filter grup relasi bisnis vs grup pribadi
-4. Rencana retry/backoff kalau `sendMessage` gagal selain FLOOD_WAIT (misal target keluar grup, blokir bot, dll) — saat ini baru dicatat sebagai `error` status, belum ada retry otomatis
+1. Enkripsi session & token (prioritas keamanan sebelum dipakai produksi jangka panjang)
+2. Tab riwayat job (list semua `broadcast_jobs` + expand lihat per-target statusnya)
+3. Retry/backoff untuk error non-flood-wait
+4. Pertimbangkan batas `getDialogs({ limit: 500 })` di `userbot.js` kalau akun mengikuti sangat banyak grup
 
 ## Catatan Keamanan (penting, jangan dihapus)
-- Randomisasi delay & urutan di sini tujuannya **menghindari rate-limit teknis (flood-wait)**, bukan untuk sengaja melewati aturan anti-spam admin grup. Broadtele dipakai untuk grup sendiri & relasi bisnis yang sudah setuju menerima update.
-- Jangan commit `.env` atau file session ke Git — sudah ada di `.gitignore`.
+- Randomisasi delay & urutan tujuannya **menghindari rate-limit teknis (flood-wait)**, bukan untuk sengaja melewati aturan anti-spam admin grup. Broadtele dipakai untuk grup sendiri & relasi bisnis yang sudah setuju menerima update.
+- Jangan commit `.env` atau `.broadtele-session` ke Git — sudah ada di `.gitignore`.

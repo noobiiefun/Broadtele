@@ -1,6 +1,5 @@
 const { TelegramClient } = require('telegram');
 const { StringSession } = require('telegram/sessions');
-const input = require('input'); // dipakai hanya untuk mode CLI/dev; UI produksi harus gantikan dengan prompt Electron
 
 const apiId = parseInt(process.env.TG_API_ID, 10);
 const apiHash = process.env.TG_API_HASH;
@@ -8,26 +7,37 @@ const apiHash = process.env.TG_API_HASH;
 let client = null;
 
 /**
- * Login userbot. sessionString kosong ("") = login baru (akan minta nomor HP + OTP + 2FA kalau ada).
- * Kalau sudah punya sessionString tersimpan, langsung connect tanpa prompt ulang.
+ * Login/connect userbot.
+ * - sessionString terisi -> langsung connect, tidak ada prompt sama sekali.
+ * - sessionString kosong -> login baru, minta data lewat `prompts` (dipasok oleh main.js,
+ *   yang meneruskannya sebagai dialog di UI, bukan prompt terminal).
+ *
+ * prompts = { phoneNumber: () => Promise<string>, password: () => Promise<string>, phoneCode: () => Promise<string> }
  */
-async function initUserbot(sessionString = '') {
+async function initUserbot(sessionString = '', prompts = {}) {
   const stringSession = new StringSession(sessionString);
   client = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 5 });
 
   if (!sessionString) {
     await client.start({
-      phoneNumber: async () => await input.text('Nomor HP (format +62...): '),
-      password: async () => await input.text('Password 2FA (kosongkan jika tidak ada): '),
-      phoneCode: async () => await input.text('Kode OTP dari Telegram: '),
-      onError: (err) => console.error('Login error:', err),
+      phoneNumber: prompts.phoneNumber || (() => { throw new Error('Prompt nomor HP tidak tersedia'); }),
+      password: prompts.password || (async () => ''),
+      phoneCode: prompts.phoneCode || (() => { throw new Error('Prompt kode OTP tidak tersedia'); }),
+      onError: (err) => console.error('Login userbot gagal:', err),
     });
-    console.log('Session string baru (SIMPAN INI, JANGAN DI-COMMIT):');
-    console.log(client.session.save());
   } else {
     await client.connect();
   }
   return client;
+}
+
+/** Dipanggil setelah login sukses, untuk disimpan lewat sessionStore. */
+function getSessionString() {
+  return client ? client.session.save() : '';
+}
+
+function isConnected() {
+  return !!(client && client.connected);
 }
 
 /**
@@ -75,4 +85,4 @@ function getClient() {
   return client;
 }
 
-module.exports = { initUserbot, listDialogs, sendMessage, getClient };
+module.exports = { initUserbot, listDialogs, sendMessage, getClient, getSessionString, isConnected };
