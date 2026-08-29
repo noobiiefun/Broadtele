@@ -1,0 +1,21 @@
+{
+  "name": "broadtele",
+  "version": "0.1.0",
+  "description": "Electron app broadcast Telegram (grup & japri) hybrid Bot API + userbot dengan randomisasi urutan & delay",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "noobiiefun",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "input": "^1.0.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "telegram": "^2.22.2"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Broadtele</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
+    h1 { font-size: 18px; }
+    .placeholder { padding: 24px; border: 1px dashed #555; border-radius: 8px; color: #999; }
+    code { background: #222; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Broadtele</h1>
+  <div class="placeholder">
+    UI belum dibuat — ini masih placeholder.<br /><br />
+    API yang sudah tersedia lewat <code>window.broadtele</code>:
+    <ul>
+      <li><code>broadtele.targets.list(type)</code> — 'grup' | 'japri' | undefined (semua)</li>
+      <li><code>broadtele.targets.syncUserbotDialogs()</code></li>
+      <li><code>broadtele.jobs.create({ name, message_text, target_type, delay_min_sec, delay_max_sec, targetIds })</code></li>
+      <li><code>broadtele.jobs.run(jobId)</code>, <code>.pause(jobId)</code>, <code>.stop(jobId)</code></li>
+      <li><code>broadtele.jobs.onProgress(cb)</code></li>
+      <li><code>broadtele.userbot.login()</code></li>
+    </ul>
+    Lihat <code>BROADTELE.md</code> di root project untuk rencana UI selanjutnya.
+  </div>
+</body>
+</html>
