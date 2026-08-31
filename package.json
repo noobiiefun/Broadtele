@@ -10,7 +10,6 @@
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^11.3.0",
-    "dotenv": "^16.4.5",
     "node-telegram-bot-api": "^0.66.0",
     "telegram": "^2.22.2"
   },

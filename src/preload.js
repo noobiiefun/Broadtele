@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('broadtele', {
+  config: {
+    get: () => ipcRenderer.invoke('config:get'),
+    save: (payload) => ipcRenderer.invoke('config:save', payload),
+  },
   targets: {
     list: (type) => ipcRenderer.invoke('targets:list', type),
     setFlag: (id, field, value) => ipcRenderer.invoke('targets:setFlag', { id, field, value }),

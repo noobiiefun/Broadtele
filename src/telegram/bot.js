@@ -9,6 +9,8 @@ let bot = null;
  * - mencatat kontak personal yang pernah DM bot (bot_contacts -> otomatis jadi target japri)
  */
 function initBot(token) {
+  if (bot) stopBot(); // hindari dua polling aktif kalau token diganti dari tab Pengaturan
+
   bot = new TelegramBot(token, { polling: true });
 
   bot.on('message', (msg) => {
@@ -36,16 +38,24 @@ function initBot(token) {
   return bot;
 }
 
+/** Hentikan polling bot yang sedang jalan (dipanggil sebelum ganti token). */
+function stopBot() {
+  if (bot) {
+    bot.stopPolling().catch(() => {});
+    bot = null;
+  }
+}
+
 /**
  * Kirim pesan lewat Bot API. Rate limit resmi ~1 pesan/detik per chat, ~30/detik total,
  * jadi pengaturan delay antar kirim tetap harus dihormati walau lewat bot.
  */
 async function sendMessage(chatId, text) {
+  if (!bot) return { ok: false, error: 'Bot belum diinisialisasi. Isi Bot Token di tab Pengaturan.' };
   try {
     await bot.sendMessage(chatId, text);
     return { ok: true };
   } catch (err) {
-    // err.response?.body?.parameters?.retry_after -> mirip FLOOD_WAIT versi Bot API
     const retryAfter = err.response?.body?.parameters?.retry_after;
     if (retryAfter) {
       console.warn(`Bot API retry_after ${retryAfter}s untuk chat ${chatId}, menunggu...`);
@@ -65,4 +75,8 @@ function getBot() {
   return bot;
 }
 
-module.exports = { initBot, sendMessage, getBot };
+function isActive() {
+  return !!bot;
+}
+
+module.exports = { initBot, stopBot, sendMessage, getBot, isActive };

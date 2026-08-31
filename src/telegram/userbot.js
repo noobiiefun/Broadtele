@@ -1,10 +1,19 @@
 const { TelegramClient } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 
-const apiId = parseInt(process.env.TG_API_ID, 10);
-const apiHash = process.env.TG_API_HASH;
-
+let apiId = null;
+let apiHash = null;
 let client = null;
+
+/** Dipanggil main.js setiap kali kredensial dibaca/diubah dari tab Pengaturan. */
+function setCredentials({ apiId: id, apiHash: hash }) {
+  apiId = parseInt(id, 10);
+  apiHash = hash;
+}
+
+function hasCredentials() {
+  return !!(apiId && apiHash);
+}
 
 /**
  * Login/connect userbot.
@@ -15,6 +24,9 @@ let client = null;
  * prompts = { phoneNumber: () => Promise<string>, password: () => Promise<string>, phoneCode: () => Promise<string> }
  */
 async function initUserbot(sessionString = '', prompts = {}) {
+  if (!hasCredentials()) {
+    throw new Error('API ID / API Hash belum diisi. Isi dulu di tab Pengaturan.');
+  }
   const stringSession = new StringSession(sessionString);
   client = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 5 });
 
@@ -85,4 +97,6 @@ function getClient() {
   return client;
 }
 
-module.exports = { initUserbot, listDialogs, sendMessage, getClient, getSessionString, isConnected };
+module.exports = {
+  setCredentials, hasCredentials, initUserbot, listDialogs, sendMessage, getClient, getSessionString, isConnected,
+};

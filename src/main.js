@@ -1,4 +1,3 @@
-require('dotenv').config();
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
@@ -7,6 +6,7 @@ const userbot = require('./telegram/userbot');
 const botApi = require('./telegram/bot');
 const queue = require('./broadcast/queue');
 const sessionStore = require('./config/sessionStore');
+const configStore = require('./config/configStore');
 
 let mainWindow;
 
@@ -26,14 +26,19 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow();
 
-  // Bot API bisa langsung jalan kalau token sudah ada di .env
-  if (process.env.TG_BOT_TOKEN) {
-    botApi.initBot(process.env.TG_BOT_TOKEN);
+  // Tidak ada .env sama sekali — semua kredensial dibaca dari config yang disimpan
+  // lewat tab Pengaturan (folder userData OS, lihat src/config/configStore.js).
+  const config = configStore.loadConfig();
+
+  if (config.apiId && config.apiHash) {
+    userbot.setCredentials({ apiId: config.apiId, apiHash: config.apiHash });
+  }
+  if (config.botToken) {
+    botApi.initBot(config.botToken);
   }
 
-  // Userbot: kalau ada session tersimpan (file lokal atau .env lama), connect otomatis tanpa prompt.
-  const savedSession = sessionStore.loadSession() || process.env.TG_SESSION_STRING || '';
-  if (savedSession) {
+  const savedSession = sessionStore.loadSession();
+  if (savedSession && userbot.hasCredentials()) {
     try {
       await userbot.initUserbot(savedSession);
     } catch (err) {
@@ -48,6 +53,36 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// ---- IPC: Pengaturan (API ID / API Hash / Bot Token) ----
+ipcMain.handle('config:get', () => {
+  const c = configStore.loadConfig();
+  return {
+    apiId: c.apiId || '',
+    apiHash: c.apiHash || '',
+    botToken: c.botToken || '',
+  };
+});
+
+ipcMain.handle('config:save', async (_e, { apiId, apiHash, botToken }) => {
+  configStore.saveConfig({ apiId, apiHash, botToken });
+
+  if (apiId && apiHash) {
+    userbot.setCredentials({ apiId, apiHash });
+  }
+
+  if (botToken) {
+    try {
+      botApi.initBot(botToken);
+    } catch (err) {
+      throw new Error(`Bot token tidak valid: ${err.message}`);
+    }
+  } else {
+    botApi.stopBot();
+  }
+
+  return { ok: true };
 });
 
 // ---- IPC: Targets ----
@@ -100,6 +135,9 @@ function promptRenderer(type, label) {
 }
 
 ipcMain.handle('userbot:login', async () => {
+  if (!userbot.hasCredentials()) {
+    throw new Error('Isi API ID dan API Hash di tab Pengaturan dulu.');
+  }
   await userbot.initUserbot('', {
     phoneNumber: () => promptRenderer('phoneNumber', 'Nomor HP (contoh: +6281234567890)'),
     password: () => promptRenderer('password', 'Password 2FA (kosongkan jika tidak punya)'),
@@ -109,7 +147,10 @@ ipcMain.handle('userbot:login', async () => {
   return { ok: true };
 });
 
-ipcMain.handle('userbot:status', () => ({ connected: userbot.isConnected() }));
+ipcMain.handle('userbot:status', () => ({
+  connected: userbot.isConnected(),
+  botActive: botApi.isActive(),
+}));
 
 ipcMain.handle('userbot:logout', () => {
   sessionStore.clearSession();

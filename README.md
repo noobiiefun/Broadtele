@@ -22,17 +22,16 @@ Dibuat untuk mengelola broadcast ke grup sendiri & grup relasi bisnis (reseller 
 ## Setup Cepat
 ```bash
 npm install
-cp .env.example .env
-# isi .env: TG_API_ID, TG_API_HASH (dari my.telegram.org), TG_BOT_TOKEN (dari @BotFather)
 npm start
 ```
-Login userbot dilakukan lewat dialog di aplikasi (nomor HP → OTP → password 2FA opsional) — session disimpan otomatis, tidak perlu edit `.env` lagi setelahnya.
+Tidak ada file `.env` yang perlu diisi manual. Semua kredensial (API ID, API Hash, Bot Token) diisi lewat tab **Pengaturan** di dalam aplikasi saat pertama kali jalan, dan tersimpan otomatis di folder data aplikasi milik OS (bukan di folder project, jadi aman kalau project di-share/di-commit ke Git).
 
 **Panduan lengkap step-by-step (disarankan untuk setup pertama kali):** [`SETUP.md`](./SETUP.md)
 **Kalau ada error:** [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md)
 
 ## Tampilan
-Aplikasi punya 4 tab:
+Aplikasi punya 5 tab:
+- **Pengaturan** — isi API ID, API Hash (dari my.telegram.org), dan Bot Token (dari @BotFather, opsional)
 - **Grup** — daftar grup (dari sync akun pribadi dan/atau tempat bot berada), centang untuk jadi target broadcast, toggle "relasi bisnis"
 - **Japri** — daftar kontak personal, termasuk yang otomatis masuk karena pernah chat ke bot
 - **Buat Broadcast** — pilih tipe target, tulis pesan, atur jeda min/max, jalankan

@@ -6,6 +6,49 @@ const state = {
   lastJobId: null,
 };
 
+// ---------------- Pengaturan (config API ID/Hash/Bot Token) ----------------
+async function loadConfigIntoForm() {
+  try {
+    const cfg = await window.broadtele.config.get();
+    document.getElementById('cfgApiId').value = cfg.apiId || '';
+    document.getElementById('cfgApiHash').value = cfg.apiHash || '';
+    document.getElementById('cfgBotToken').value = cfg.botToken || '';
+  } catch (err) {
+    toast(`Gagal memuat pengaturan: ${err.message}`);
+  }
+}
+
+document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+  const apiId = document.getElementById('cfgApiId').value.trim();
+  const apiHash = document.getElementById('cfgApiHash').value.trim();
+  const botToken = document.getElementById('cfgBotToken').value.trim();
+
+  if (!apiId || !apiHash) return toast('API ID dan API Hash wajib diisi.');
+
+  const btn = document.getElementById('saveConfigBtn');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+  try {
+    await window.broadtele.config.save({ apiId, apiHash, botToken });
+    toast('Pengaturan tersimpan.');
+    await refreshUserbotStatus();
+  } catch (err) {
+    toast(`Gagal menyimpan pengaturan: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan Pengaturan';
+  }
+});
+
+document.querySelectorAll('.toggle-visibility').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.target);
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    btn.textContent = showing ? 'Tampilkan' : 'Sembunyikan';
+  });
+});
+
 // ---------------- Navigasi tab ----------------
 document.querySelectorAll('.nav-item').forEach((item) => {
   item.addEventListener('click', () => {
@@ -206,12 +249,16 @@ document.getElementById('stopBtn').addEventListener('click', async () => {
 // ---------------- Status userbot & login modal ----------------
 async function refreshUserbotStatus() {
   try {
-    const { connected } = await window.broadtele.userbot.status();
+    const { connected, botActive } = await window.broadtele.userbot.status();
     const pill = document.getElementById('userbotStatusPill');
     pill.classList.toggle('connected', connected);
     pill.innerHTML = `<span class="dot"></span> Userbot: ${connected ? 'terhubung' : 'belum login'}`;
+
+    const botPill = document.getElementById('botStatusPill');
+    botPill.classList.toggle('connected', botActive);
+    botPill.innerHTML = `<span class="dot"></span> Bot: ${botActive ? 'aktif' : 'belum aktif'}`;
   } catch (err) {
-    toast(`Gagal cek status userbot: ${err.message}`);
+    toast(`Gagal cek status: ${err.message}`);
   }
 }
 
@@ -258,6 +305,7 @@ window.broadtele.userbot.onPrompt(({ requestId, type, label }) => {
 });
 
 // ---------------- Init ----------------
+loadConfigIntoForm();
 loadTargets('grup');
 loadTargets('japri');
 refreshUserbotStatus();

@@ -10,7 +10,7 @@
     <div class="topbar">
       <div class="brand"><span class="dot-static"></span> BROADTELE</div>
       <div class="status-cluster">
-        <span id="botStatusPill" class="status-pill"><span class="dot"></span> Bot: cek .env</span>
+        <span id="botStatusPill" class="status-pill"><span class="dot"></span> Bot: belum aktif</span>
         <span id="userbotStatusPill" class="status-pill"><span class="dot"></span> Userbot: belum login</span>
         <button id="loginBtn">Login Userbot</button>
         <button id="logoutBtn" class="ghost">Hapus Sesi</button>
@@ -18,7 +18,8 @@
     </div>
 
     <div class="sidebar">
-      <div class="nav-item active" data-view="grup"><span class="num">01</span> Grup</div>
+      <div class="nav-item active" data-view="pengaturan"><span class="num">00</span> Pengaturan</div>
+      <div class="nav-item" data-view="grup"><span class="num">01</span> Grup</div>
       <div class="nav-item" data-view="japri"><span class="num">02</span> Japri</div>
       <div class="nav-item" data-view="buat"><span class="num">03</span> Buat Broadcast</div>
       <div class="nav-item" data-view="log"><span class="num">04</span> Log Pengiriman</div>
@@ -26,8 +27,36 @@
     </div>
 
     <div class="main">
+      <!-- PENGATURAN -->
+      <div class="view active" id="view-pengaturan">
+        <div class="view-header"><h2>Pengaturan</h2></div>
+        <div class="view-sub">Diisi sekali di sini — tersimpan otomatis di perangkat ini, tidak perlu edit file apapun.</div>
+
+        <div class="field" style="max-width:520px">
+          <label>API ID <span style="color:var(--muted)">(dari my.telegram.org &rarr; API Development Tools)</span></label>
+          <input type="text" id="cfgApiId" placeholder="Contoh: 123456" />
+        </div>
+        <div class="field" style="max-width:520px">
+          <label>API Hash</label>
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="cfgApiHash" placeholder="Contoh: abcdef1234567890abcdef1234567890" style="flex:1" />
+            <button type="button" class="ghost toggle-visibility" data-target="cfgApiHash">Tampilkan</button>
+          </div>
+        </div>
+        <div class="field" style="max-width:520px">
+          <label>Bot Token <span style="color:var(--muted)">(dari @BotFather — opsional, kosongkan kalau tidak pakai Bot API)</span></label>
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="cfgBotToken" placeholder="Contoh: 123456789:AAExxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex:1" />
+            <button type="button" class="ghost toggle-visibility" data-target="cfgBotToken">Tampilkan</button>
+          </div>
+        </div>
+
+        <button class="primary" id="saveConfigBtn">Simpan Pengaturan</button>
+        <p class="selection-note" style="margin-top:14px">Setelah API ID &amp; API Hash tersimpan, buka status di pojok kanan atas lalu klik "Login Userbot" untuk menghubungkan akun pribadi.</p>
+      </div>
+
       <!-- GRUP -->
-      <div class="view active" id="view-grup">
+      <div class="view" id="view-grup">
         <div class="view-header"><h2>Grup</h2></div>
         <div class="view-sub">Grup yang diikuti akun pribadi dan/atau tempat bot berada. Centang untuk dipakai di broadcast grup.</div>
         <div class="toolbar">

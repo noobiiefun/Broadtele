@@ -19,8 +19,11 @@ Ini bukan bug — Telegram membatasi kecepatan kirim, dan aplikasi **sengaja men
 - Pastikan sudah ada **minimal satu pesan** terkirim di grup itu setelah bot masuk (bot baru "mengenal" grup setelah menerima event/message pertama).
 - Cek terminal/console tempat `npm start` dijalankan — kalau ada `polling_error`, biasanya token bot salah atau ada instance bot lain yang jalan dengan token sama (Telegram hanya izinkan satu polling aktif per token).
 
-## `error: TG_API_ID is not a number` atau app langsung crash saat start
-`.env` belum diisi atau salah format. Pastikan `TG_API_ID` isinya angka murni tanpa tanda kutip, dan `.env` ada di root folder (sejajar `package.json`), bukan di dalam `src/`.
+## "API ID / API Hash belum diisi" saat klik Login Userbot
+Buka tab **Pengaturan**, isi API ID & API Hash (dari my.telegram.org), klik **"Simpan Pengaturan"**, baru klik **"Login Userbot"**.
+
+## Error `TG_API_ID is not a number` / app crash saat start terkait kredensial
+Ini sudah tidak relevan lagi di versi sekarang — kredensial tidak lagi dibaca dari `.env`, tapi dari tab **Pengaturan** yang tersimpan di folder data aplikasi. Kalau errornya justru "API ID / API Hash belum diisi", isi dulu lewat tab Pengaturan (lihat poin di atas).
 
 ## Perlu ganti nomor HP / akun userbot yang dipakai
 1. Klik **"Hapus Sesi"**.
