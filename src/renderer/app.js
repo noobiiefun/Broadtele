@@ -247,40 +247,73 @@ document.getElementById('stopBtn').addEventListener('click', async () => {
 });
 
 // ---------------- Status userbot & login modal ----------------
+function updateBotPill(botActive) {
+  const botPill = document.getElementById('botStatusPill');
+  botPill.classList.toggle('connected', !!botActive);
+  botPill.innerHTML = `<span class="dot"></span> Bot: ${botActive ? 'aktif' : 'belum aktif'}`;
+}
+
+/**
+ * status: 'connecting' | 'connected' | 'disconnected'.
+ * Tombol Login sengaja di-disable selama 'connecting' supaya tidak ada yang
+ * klik ulang dan bikin proses reconnect yang sedang jalan malah ketimpa sesi baru
+ * (ini akar bug "sesi kelihatan putus" yang dilaporkan sebelumnya).
+ */
+function applyUserbotStatus(status) {
+  const pill = document.getElementById('userbotStatusPill');
+  const loginBtn = document.getElementById('loginBtn');
+  pill.classList.remove('connected', 'connecting');
+
+  if (status === 'connected') {
+    pill.classList.add('connected');
+    pill.innerHTML = `<span class="dot"></span> Userbot: terhubung`;
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Login Userbot';
+  } else if (status === 'connecting') {
+    pill.classList.add('connecting');
+    pill.innerHTML = `<span class="dot"></span> Userbot: menyambungkan...`;
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Menyambungkan...';
+  } else {
+    pill.innerHTML = `<span class="dot"></span> Userbot: belum login`;
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Login Userbot';
+  }
+}
+
+// Dipanggil sekali saat aplikasi baru dibuka, sebelum event push dari main.js sempat sampai.
 async function refreshUserbotStatus() {
   try {
     const { connected, botActive } = await window.broadtele.userbot.status();
-    const pill = document.getElementById('userbotStatusPill');
-    pill.classList.toggle('connected', connected);
-    pill.innerHTML = `<span class="dot"></span> Userbot: ${connected ? 'terhubung' : 'belum login'}`;
-
-    const botPill = document.getElementById('botStatusPill');
-    botPill.classList.toggle('connected', botActive);
-    botPill.innerHTML = `<span class="dot"></span> Bot: ${botActive ? 'aktif' : 'belum aktif'}`;
+    applyUserbotStatus(connected ? 'connected' : 'disconnected');
+    updateBotPill(botActive);
   } catch (err) {
     toast(`Gagal cek status: ${err.message}`);
   }
 }
 
+// Update realtime dari main.js — ini yang bikin status selalu akurat walau proses
+// reconnect di background butuh waktu beberapa detik.
+window.broadtele.userbot.onStatusUpdate(({ status, botActive }) => {
+  applyUserbotStatus(status);
+  updateBotPill(botActive);
+});
+
 document.getElementById('loginBtn').addEventListener('click', async () => {
   const btn = document.getElementById('loginBtn');
   btn.disabled = true;
-  btn.textContent = 'Menghubungkan...';
   try {
     await window.broadtele.userbot.login();
     toast('Login userbot berhasil.');
-    await refreshUserbotStatus();
   } catch (err) {
     toast(`Login gagal: ${err.message}`);
-  } finally {
     btn.disabled = false;
-    btn.textContent = 'Login Userbot';
   }
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await window.broadtele.userbot.logout();
-  toast('Sesi userbot dihapus. Restart aplikasi lalu klik "Login Userbot" untuk login ulang.');
+  toast('Sesi userbot dihapus. Klik "Login Userbot" untuk login ulang.');
 });
 
 // Modal prompt (dipicu dari main.js saat proses login butuh nomor HP / OTP / password 2FA)
@@ -295,13 +328,31 @@ window.broadtele.userbot.onPrompt(({ requestId, type, label }) => {
   modal.classList.add('open');
   modalInput.focus();
 
+  const submitBtn = document.getElementById('loginModalSubmit');
+  const cancelBtn = document.getElementById('loginModalCancel');
+
+  const cleanup = () => {
+    submitBtn.removeEventListener('click', submit);
+    cancelBtn.removeEventListener('click', cancel);
+    modalInput.removeEventListener('keydown', onKeydown);
+  };
   const submit = () => {
     window.broadtele.userbot.respondPrompt(requestId, modalInput.value);
     modal.classList.remove('open');
-    document.getElementById('loginModalSubmit').removeEventListener('click', submit);
+    cleanup();
   };
-  document.getElementById('loginModalSubmit').addEventListener('click', submit, { once: true });
-  modalInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); }, { once: true });
+  const cancel = () => {
+    // Kirim penanda khusus — main.js akan mengubah ini jadi pembatalan proses login,
+    // bukan dianggap sebagai jawaban kosong.
+    window.broadtele.userbot.respondPrompt(requestId, { __cancelled: true });
+    modal.classList.remove('open');
+    cleanup();
+  };
+  const onKeydown = (e) => { if (e.key === 'Enter') submit(); };
+
+  submitBtn.addEventListener('click', submit);
+  cancelBtn.addEventListener('click', cancel);
+  modalInput.addEventListener('keydown', onKeydown);
 });
 
 // ---------------- Init ----------------

@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('broadtele', {
     login: () => ipcRenderer.invoke('userbot:login'),
     logout: () => ipcRenderer.invoke('userbot:logout'),
     status: () => ipcRenderer.invoke('userbot:status'),
+    onStatusUpdate: (cb) => ipcRenderer.on('userbot:statusUpdate', (_e, data) => cb(data)),
     onPrompt: (cb) => ipcRenderer.on('userbot:prompt', (_e, data) => cb(data)),
     respondPrompt: (requestId, value) => ipcRenderer.send(`userbot:promptResponse:${requestId}`, value),
   },

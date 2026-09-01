@@ -23,13 +23,21 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
-app.whenReady().then(async () => {
-  createWindow();
+/**
+ * Kirim status userbot ke UI secara aktif (push), bukan cuma dijawab pas ditanya.
+ * status: 'connecting' | 'connected' | 'disconnected'
+ * Ini yang memperbaiki bug "sesi kelihatan putus padahal masih proses nyambung" —
+ * sebelumnya UI cuma nanya status SEKALI pas halaman baru dibuka, padahal proses
+ * reconnect ke Telegram di background belum tentu selesai secepat itu.
+ */
+function pushStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('userbot:statusUpdate', { status, botActive: botApi.isActive() });
+  }
+}
 
-  // Tidak ada .env sama sekali — semua kredensial dibaca dari config yang disimpan
-  // lewat tab Pengaturan (folder userData OS, lihat src/config/configStore.js).
+async function reconnectSavedSession() {
   const config = configStore.loadConfig();
-
   if (config.apiId && config.apiHash) {
     userbot.setCredentials({ apiId: config.apiId, apiHash: config.apiHash });
   }
@@ -39,12 +47,27 @@ app.whenReady().then(async () => {
 
   const savedSession = sessionStore.loadSession();
   if (savedSession && userbot.hasCredentials()) {
+    pushStatus('connecting');
     try {
       await userbot.initUserbot(savedSession);
+      pushStatus('connected');
     } catch (err) {
       console.error('Gagal connect userbot dari session tersimpan:', err.message);
+      pushStatus('disconnected');
     }
+  } else {
+    pushStatus('disconnected');
   }
+}
+
+app.whenReady().then(() => {
+  createWindow();
+
+  // Tunggu halaman selesai load dulu (listener di renderer sudah siap) baru mulai
+  // reconnect di background, supaya event status ini pasti kebaca oleh UI.
+  mainWindow.webContents.once('did-finish-load', () => {
+    reconnectSavedSession();
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -82,6 +105,7 @@ ipcMain.handle('config:save', async (_e, { apiId, apiHash, botToken }) => {
     botApi.stopBot();
   }
 
+  pushStatus(userbot.isConnected() ? 'connected' : 'disconnected');
   return { ok: true };
 });
 
@@ -122,12 +146,23 @@ ipcMain.handle('jobs:pause', (_e, jobId) => queue.pauseJob(jobId));
 ipcMain.handle('jobs:stop', (_e, jobId) => queue.stopJob(jobId));
 
 // ---- IPC: Userbot login (dialog ditampilkan di UI, bukan terminal) ----
+
+/**
+ * Minta input dari user lewat modal di renderer. Kalau user klik "Batal" di modal,
+ * renderer mengirim balik { __cancelled: true } lewat channel yang sama — di sini
+ * itu diterjemahkan jadi REJECT (bukan resolve), supaya client.start() di GramJS
+ * langsung berhenti dengan error alih-alih nyangkut nunggu input yang tidak akan datang.
+ */
 function promptRenderer(type, label) {
   return new Promise((resolve, reject) => {
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const timeout = setTimeout(() => reject(new Error(`Timeout menunggu input: ${label}`)), 5 * 60 * 1000);
     ipcMain.once(`userbot:promptResponse:${requestId}`, (_e, value) => {
       clearTimeout(timeout);
+      if (value && value.__cancelled) {
+        reject(new Error('Login dibatalkan.'));
+        return;
+      }
       resolve(value);
     });
     mainWindow.webContents.send('userbot:prompt', { requestId, type, label });
@@ -135,16 +170,26 @@ function promptRenderer(type, label) {
 }
 
 ipcMain.handle('userbot:login', async () => {
+  if (userbot.isConnected()) {
+    throw new Error('Userbot sudah terhubung. Klik "Hapus Sesi" dulu kalau mau login dengan akun lain.');
+  }
   if (!userbot.hasCredentials()) {
     throw new Error('Isi API ID dan API Hash di tab Pengaturan dulu.');
   }
-  await userbot.initUserbot('', {
-    phoneNumber: () => promptRenderer('phoneNumber', 'Nomor HP (contoh: +6281234567890)'),
-    password: () => promptRenderer('password', 'Password 2FA (kosongkan jika tidak punya)'),
-    phoneCode: () => promptRenderer('phoneCode', 'Kode OTP dari Telegram'),
-  });
-  sessionStore.saveSession(userbot.getSessionString());
-  return { ok: true };
+  pushStatus('connecting');
+  try {
+    await userbot.initUserbot('', {
+      phoneNumber: () => promptRenderer('phoneNumber', 'Nomor HP (contoh: +6281234567890)'),
+      password: () => promptRenderer('password', 'Password 2FA (kosongkan jika tidak punya)'),
+      phoneCode: () => promptRenderer('phoneCode', 'Kode OTP dari Telegram'),
+    });
+    sessionStore.saveSession(userbot.getSessionString());
+    pushStatus('connected');
+    return { ok: true };
+  } catch (err) {
+    pushStatus('disconnected');
+    throw err;
+  }
 });
 
 ipcMain.handle('userbot:status', () => ({
@@ -154,5 +199,6 @@ ipcMain.handle('userbot:status', () => ({
 
 ipcMain.handle('userbot:logout', () => {
   sessionStore.clearSession();
+  pushStatus('disconnected');
   return { ok: true };
 });

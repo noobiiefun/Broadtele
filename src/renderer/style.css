@@ -76,6 +76,9 @@ html, body {
 .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
 .status-pill.connected .dot { background: var(--mint); box-shadow: 0 0 6px var(--mint); }
 .status-pill.connected { color: var(--mint); border-color: var(--mint-dim); }
+.status-pill.connecting .dot { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.2s ease-in-out infinite; }
+.status-pill.connecting { color: var(--amber); border-color: var(--amber-dim); }
+@keyframes pulse { 50% { opacity: 0.4; } }
 
 button {
   font-family: var(--sans);

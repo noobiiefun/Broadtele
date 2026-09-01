@@ -69,6 +69,8 @@ Broadtele/
 - [x] Login userbot lewat UI (modal dialog nomor HP/OTP/password), session tersimpan otomatis
 - [x] **Kredensial (API ID/Hash/Bot Token) sekarang diisi & disimpan lewat tab Pengaturan di aplikasi — `.env` sudah dihapus total dari project**
 - [x] Dokumentasi setup (`SETUP.md`) dan troubleshooting (`TROUBLESHOOTING.md`) sudah disesuaikan dengan alur tanpa `.env`
+- [x] **Bugfix**: status userbot sekarang di-push realtime dari main process ('connecting'/'connected'/'disconnected') alih-alih cuma dicek sekali saat halaman dibuka — memperbaiki bug di mana reconnect dari sesi tersimpan masih diproses di background tapi UI sudah kadung nampilin "belum login", yang bisa memicu user klik Login lagi dan menimpa sesi yang sedang nyambung. Tombol "Login Userbot" otomatis di-disable selama status 'connecting'/'connected'
+- [x] **Bugfix**: modal login (nomor HP/OTP/password) sekarang punya tombol "Batal" yang benar-benar membatalkan proses `client.start()` di GramJS, bukan cuma nutup modal doang
 - [ ] Encryption untuk file config & session di folder `userData` — **masih plain text/JSON**, rencana pakai `keytar` (OS credential manager)
 - [ ] Retry otomatis untuk error selain FLOOD_WAIT (target keluar grup, blokir bot, dll) — saat ini cuma dicatat sebagai `failed`, tidak retry
 - [ ] Riwayat job (daftar job lama + hasil per target) — saat ini log hanya menampilkan job yang sedang/terakhir jalan, belum ada tab riwayat
