@@ -1,5 +1,14 @@
 # TROUBLESHOOTING.md
 
+## Error saat `npm start`: "module was compiled against a different Node.js version... NODE_MODULE_VERSION 127 ... requires ... 125"
+Ini error native module (`better-sqlite3`) yang ke-compile untuk Node.js biasa, padahal Electron butuh versi yang dicompile khusus untuknya. Perbaiki dengan:
+```bash
+npx electron-rebuild -f -w better-sqlite3
+```
+lalu jalankan `npm start` lagi.
+
+Versi project terbaru sudah punya script `postinstall` yang otomatis menjalankan rebuild ini setiap `npm install` — jadi kalau kamu baru clone/extract ulang project, cukup `npm install` saja tanpa perlu command manual di atas. Kalau tetap error setelah `npm install` ulang, jalankan manual command di atas sekali.
+
 ## "Prompt nomor HP tidak tersedia" / login tidak muncul dialog apapun
 Biasanya karena login dipanggil bukan lewat tombol UI (misal langsung lewat kode/CLI). Pastikan login selalu lewat tombol **"Login Userbot"** di aplikasi, bukan memanggil `initUserbot()` langsung tanpa `prompts`.
 

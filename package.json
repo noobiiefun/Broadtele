@@ -4,7 +4,8 @@
   "description": "Electron app broadcast Telegram (grup & japri) hybrid Bot API + userbot dengan randomisasi urutan & delay",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "author": "noobiiefun",
   "license": "MIT",
@@ -14,6 +15,7 @@
     "telegram": "^2.22.2"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
     "electron": "^31.0.0"
   }
 }
