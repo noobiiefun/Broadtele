@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS broadcast_job_targets (
   method TEXT CHECK(method IN ('bot','personal')) NOT NULL,
   order_index INTEGER NOT NULL,
   status TEXT CHECK(status IN ('pending','sent','failed','skipped')) DEFAULT 'pending',
+  retry_count INTEGER NOT NULL DEFAULT 0,
   sent_at TEXT,
   error_msg TEXT
 );
@@ -52,3 +53,4 @@ CREATE TABLE IF NOT EXISTS bot_contacts (
 
 CREATE INDEX IF NOT EXISTS idx_targets_type ON targets(type);
 CREATE INDEX IF NOT EXISTS idx_job_targets_job ON broadcast_job_targets(job_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_created ON broadcast_jobs(created_at DESC);

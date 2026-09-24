@@ -63,6 +63,12 @@ async function reconnectSavedSession() {
 app.whenReady().then(() => {
   createWindow();
 
+  // Job yang statusnya masih 'running'/'paused' dari sesi sebelumnya berarti
+  // aplikasinya ditutup/crash di tengah jalan — tandai 'stopped' supaya bisa
+  // dilanjutkan (sisa target pending-nya) dari tab Riwayat, bukan nyangkut selamanya.
+  const recovered = queue.recoverOrphanedJobs();
+  if (recovered.length) console.log(`Job yatim ditemukan & ditandai stopped: ${recovered.join(', ')}`);
+
   // Tunggu halaman selesai load dulu (listener di renderer sudah siap) baru mulai
   // reconnect di background, supaya event status ini pasti kebaca oleh UI.
   mainWindow.webContents.once('did-finish-load', () => {
@@ -135,15 +141,55 @@ ipcMain.handle('jobs:create', (_e, payload) => dbLayer.createJob(payload));
 
 ipcMain.handle('jobs:run', (_e, jobId) => {
   queue.runJob(jobId, {
-    onProgress: (progress) => mainWindow.webContents.send('jobs:progress', progress),
+    onProgress: (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('jobs:progress', progress);
+      }
+    },
   }).catch((err) => {
-    mainWindow.webContents.send('jobs:progress', { jobId, ok: false, error: `Job gagal: ${err.message}`, fatal: true });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('jobs:progress', { jobId, ok: false, error: `Job gagal: ${err.message}`, fatal: true });
+    }
   });
   return { started: true };
 });
 
 ipcMain.handle('jobs:pause', (_e, jobId) => queue.pauseJob(jobId));
 ipcMain.handle('jobs:stop', (_e, jobId) => queue.stopJob(jobId));
+ipcMain.handle('jobs:list', (_e, limit) => dbLayer.listJobs(limit || 50));
+ipcMain.handle('jobs:details', (_e, jobId) => dbLayer.getJobDetails(jobId));
+ipcMain.handle('jobs:duplicate', (_e, { sourceJobId, targetIds }) => dbLayer.duplicateJobWithTargets(sourceJobId, targetIds));
+
+// ---- IPC: Target — hapus & sinkron massal flag bot_can_send dari getMe ----
+ipcMain.handle('targets:delete', (_e, id) => {
+  dbLayer.deleteTarget(id);
+  return { ok: true };
+});
+
+/**
+ * Sinkronkan kolom bot_can_send untuk SEMUA grup sekaligus lewat getChatMemberCount:
+ * kalau bot bisa melihat jumlah member suatu grup, berarti bot ada di dalamnya.
+ * Ini memperbaiki kelemahan sebelumnya di mana bot_can_send hanya terisi untuk
+ * grup yang kebetulan pernah mengirim pesan SEBELUM fitur ini ada.
+ */
+ipcMain.handle('targets:syncBotMembership', async () => {
+  const b = botApi.getBot();
+  if (!b) throw new Error('Bot belum aktif. Isi Bot Token di tab Pengaturan dulu.');
+  const groups = dbLayer.db.prepare(`SELECT * FROM targets WHERE type = 'grup' AND active = 1`).all();
+  let updated = 0;
+  for (const g of groups) {
+    try {
+      await b.getChatMemberCount(g.chat_id);
+      dbLayer.setTargetFlag(g.id, 'bot_can_send', 1);
+      updated += 1;
+    } catch {
+      // bot tidak ada di grup itu / tidak bisa akses — biarkan apa adanya
+    }
+    // Hormati rate limit Bot API (~30 request/detik global)
+    await new Promise((r) => setTimeout(r, 60));
+  }
+  return { checked: groups.length, updated };
+});
 
 // ---- IPC: Userbot login (dialog ditampilkan di UI, bukan terminal) ----
 
@@ -197,8 +243,9 @@ ipcMain.handle('userbot:status', () => ({
   botActive: botApi.isActive(),
 }));
 
-ipcMain.handle('userbot:logout', () => {
+ipcMain.handle('userbot:logout', async () => {
   sessionStore.clearSession();
+  await userbot.disconnect();
   pushStatus('disconnected');
   return { ok: true };
 });
