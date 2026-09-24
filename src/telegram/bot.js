@@ -1,5 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
-const { upsertTarget, upsertBotContact } = require('../db/db');
+const { db, upsertTarget, upsertBotContact } = require('../db/db');
 
 let bot = null;
 
@@ -13,29 +13,73 @@ function initBot(token) {
 
   bot = new TelegramBot(token, { polling: true });
 
+  // Simpan token yang dipakai instance ini. Ini penting saat token diganti dari
+  // tab Pengaturan: polling_error dari bot LAMA (yang sudah dihentikan) kadang
+  // masih datang terlambat dan tidak boleh lagi menimpa status bot yang baru.
+  const myToken = token;
+
+  // Batch write ke SQLite: event message bisa datang beruntun dalam jumlah besar
+  // (grup ramai). Daripada satu transaksi per pesan, kumpulkan dulu lalu flush
+  // maksimal tiap 2 detik — jauh lebih ringan untuk disk & CPU.
+  const pendingEvents = [];
+  let flushTimer = null;
+  const FLUSH_INTERVAL_MS = 2000;
+
+  function flushEvents() {
+    flushTimer = null;
+    if (!pendingEvents.length) return;
+    const events = pendingEvents.splice(0, pendingEvents.length);
+    try {
+      db.transaction(() => {
+        for (const ev of events) {
+          if (ev.kind === 'private') {
+            upsertBotContact({ chat_id: ev.chat_id, username: ev.username, first_name: ev.first_name });
+          } else {
+            upsertTarget({
+              chat_id: ev.chat_id, type: 'grup', display_name: ev.title,
+              username: ev.username, source: 'bot', bot_can_send: 1,
+            });
+          }
+        }
+      })();
+    } catch (err) {
+      console.error('Gagal menyimpan event bot:', err.message);
+    }
+  }
+
   bot.on('message', (msg) => {
     const chat = msg.chat;
     if (chat.type === 'private') {
-      upsertBotContact({
+      pendingEvents.push({
+        kind: 'private',
         chat_id: chat.id.toString(),
         username: chat.username || null,
         first_name: chat.first_name || chat.username || 'Tanpa nama',
       });
     } else if (chat.type === 'group' || chat.type === 'supergroup') {
-      upsertTarget({
+      pendingEvents.push({
+        kind: 'group',
         chat_id: chat.id.toString(),
-        type: 'grup',
-        display_name: chat.title,
+        title: chat.title,
         username: chat.username || null,
-        source: 'bot',
-        bot_can_send: 1,
       });
+    } else {
+      return;
     }
+    if (!flushTimer) flushTimer = setTimeout(flushEvents, FLUSH_INTERVAL_MS);
   });
 
-  bot.on('polling_error', (err) => console.error('Bot polling error:', err.message));
+  bot.on('polling_error', (err) => {
+    if (bot !== getBotInstanceForToken(myToken)) return; // error dari instance lama, abaikan
+    console.error('Bot polling error:', err.message);
+  });
 
   return bot;
+}
+
+// Helper kecil: kembalikan `bot` saat ini HANYA kalau memang dibuat dengan token ini.
+function getBotInstanceForToken(token) {
+  return bot && bot._options && bot._options.token === token ? bot : (bot && bot.token === token ? bot : null);
 }
 
 /** Hentikan polling bot yang sedang jalan (dipanggil sebelum ganti token). */

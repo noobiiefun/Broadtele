@@ -4,6 +4,7 @@ const state = {
   selected: { grup: new Set(), japri: new Set() },
   targetsCache: { grup: [], japri: [] },
   lastJobId: null,
+  riwayatDirty: true,
 };
 
 // ---------------- Pengaturan (config API ID/Hash/Bot Token) ----------------
@@ -59,6 +60,7 @@ document.querySelectorAll('.nav-item').forEach((item) => {
     if (item.dataset.view === 'grup') loadTargets('grup');
     if (item.dataset.view === 'japri') loadTargets('japri');
     if (item.dataset.view === 'buat') updateSelectionCounts();
+    if (item.dataset.view === 'riwayat' && state.riwayatDirty) loadRiwayat();
   });
 });
 
@@ -72,6 +74,8 @@ function toast(message) {
 }
 
 // ---------------- Render tabel target (dipakai untuk grup & japri) ----------------
+const MAX_CONSOLE_LINES = 500;
+
 function renderTargetsTable(type) {
   const wrap = document.getElementById(type === 'grup' ? 'grupTableWrap' : 'japriTableWrap');
   const list = state.targetsCache[type];
@@ -93,6 +97,7 @@ function renderTargetsTable(type) {
         <td><span class="badge ${t.source}">${t.source}</span></td>
         <td><span class="badge ${t.bot_can_send ? 'bot' : ''}">${t.bot_can_send ? 'ya' : 'tidak'}</span></td>
         <td><input type="checkbox" class="rel-check" ${relChecked} /></td>
+        <td><button class="ghost delete-target" title="Hapus target ini">×</button></td>
       </tr>`;
   }).join('');
 
@@ -100,7 +105,7 @@ function renderTargetsTable(type) {
     <table>
       <thead>
         <tr>
-          <th></th><th>Nama</th><th>Chat ID</th><th>Sumber</th><th>Bot bisa kirim</th><th>Relasi bisnis</th>
+          <th></th><th>Nama</th><th>Chat ID</th><th>Sumber</th><th>Bot bisa kirim</th><th>Relasi bisnis</th><th></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -122,6 +127,22 @@ function renderTargetsTable(type) {
         await window.broadtele.targets.setFlag(id, 'is_business_relation', e.target.checked);
       } catch (err) {
         toast(`Gagal update relasi bisnis: ${err.message}`);
+      }
+    });
+  });
+
+  wrap.querySelectorAll('.delete-target').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr');
+      const id = Number(tr.dataset.id);
+      const name = tr.querySelector('td:nth-child(2)').textContent.trim();
+      if (!confirm(`Hapus target "${name}" dari daftar? Tindakan ini tidak bisa dibatalkan.`)) return;
+      try {
+        await window.broadtele.targets.delete(id);
+        state.selected[type].delete(id);
+        await loadTargets(type);
+      } catch (err) {
+        toast(`Gagal menghapus target: ${err.message}`);
       }
     });
   });
@@ -223,6 +244,11 @@ function logLine({ ok, name, error, meta }) {
   `;
   const consoleEl = document.getElementById('console');
   consoleEl.appendChild(el);
+  // Batasi jumlah baris supaya job besar (ratusan/ribuan target) tidak membuat
+  // halaman jadi lambat karena DOM membengkak — buang baris tertua.
+  while (consoleEl.childElementCount > MAX_CONSOLE_LINES) {
+    consoleEl.removeChild(consoleEl.firstElementChild);
+  }
   consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
@@ -231,7 +257,13 @@ window.broadtele.jobs.onProgress((progress) => {
     logLine({ ok: false, name: 'Job dihentikan karena error', error: progress.error, meta: false });
     return;
   }
-  logLine({ ok: progress.ok, name: progress.displayName || progress.targetId, error: progress.error });
+  if (progress.summary) {
+    state.riwayatDirty = true; // ada perubahan hasil job — segarkan tab Riwayat saat dibuka
+    logLine({ ok: progress.ok, name: progress.name, meta: true });
+    return;
+  }
+  const suffix = progress.willRetry ? ' (akan dicoba ulang)' : '';
+  logLine({ ok: progress.ok, name: (progress.displayName || progress.targetId) + suffix, error: progress.error });
 });
 
 document.getElementById('pauseBtn').addEventListener('click', async () => {

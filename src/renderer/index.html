@@ -23,6 +23,7 @@
       <div class="nav-item" data-view="japri"><span class="num">02</span> Japri</div>
       <div class="nav-item" data-view="buat"><span class="num">03</span> Buat Broadcast</div>
       <div class="nav-item" data-view="log"><span class="num">04</span> Log Pengiriman</div>
+      <div class="nav-item" data-view="riwayat"><span class="num">05</span> Riwayat Job</div>
       <div class="sidebar-footer">noobiiefun/broadtele<br />hybrid bot + userbot</div>
     </div>
 
@@ -61,6 +62,7 @@
         <div class="view-sub">Grup yang diikuti akun pribadi dan/atau tempat bot berada. Centang untuk dipakai di broadcast grup.</div>
         <div class="toolbar">
           <button id="syncBtn">Sync dari Akun Pribadi</button>
+          <button id="syncBotMembershipBtn" class="ghost">Sinkronkan Kepanggotaan Bot</button>
           <span class="count" id="grupCount"></span>
         </div>
         <div id="grupTableWrap"></div>
@@ -124,6 +126,13 @@
           <button id="stopBtn" class="danger">Hentikan</button>
         </div>
         <div class="console" id="console"></div>
+      </div>
+
+      <!-- RIWAYAT JOB -->
+      <div class="view" id="view-riwayat">
+        <div class="view-header"><h2>Riwayat Job</h2></div>
+        <div class="view-sub">Semua job yang pernah dibuat. Klik sebuah baris untuk melihat hasil per target, kirim ulang, atau lanjutkan job yang terhenti.</div>
+        <div id="riwayatWrap"></div>
       </div>
     </div>
   </div>
