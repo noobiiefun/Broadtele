@@ -1,3 +1,27 @@
-# Database files
-*.db-shm
-*.db-wal
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+*.asar
+
+# Database & sessions (sensitive)
+broadtele.db
+broadtele.db-shm
+broadtele.db-wal
+*.session
+*.session-journal
+
+# Credentials
+.env
+.env.local
+config.json
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -9,29 +9,27 @@
   <div id="app">
     <div class="topbar">
       <div class="brand"><span class="dot-static"></span> BROADTELE</div>
-      <div class="status-cluster">
-        <span id="botStatusPill" class="status-pill"><span class="dot"></span> Bot: belum aktif</span>
-        <span id="userbotStatusPill" class="status-pill"><span class="dot"></span> Userbot: belum login</span>
-        <button id="loginBtn">Login Userbot</button>
-        <button id="logoutBtn" class="ghost">Hapus Sesi</button>
+      <div class="status-cluster" id="statusCluster">
+        <!-- pill status per akun & per bot dirender oleh app.js -->
       </div>
     </div>
 
     <div class="sidebar">
       <div class="nav-item active" data-view="pengaturan"><span class="num">00</span> Pengaturan</div>
-      <div class="nav-item" data-view="grup"><span class="num">01</span> Grup</div>
-      <div class="nav-item" data-view="japri"><span class="num">02</span> Japri</div>
-      <div class="nav-item" data-view="buat"><span class="num">03</span> Buat Broadcast</div>
-      <div class="nav-item" data-view="log"><span class="num">04</span> Log Pengiriman</div>
-      <div class="nav-item" data-view="riwayat"><span class="num">05</span> Riwayat Job</div>
-      <div class="sidebar-footer">noobiiefun/broadtele<br />hybrid bot + userbot</div>
+      <div class="nav-item" data-view="akunbot"><span class="num">01</span> Akun &amp; Bot</div>
+      <div class="nav-item" data-view="grup"><span class="num">02</span> Grup</div>
+      <div class="nav-item" data-view="japri"><span class="num">03</span> Japri</div>
+      <div class="nav-item" data-view="buat"><span class="num">04</span> Buat Broadcast</div>
+      <div class="nav-item" data-view="log"><span class="num">05</span> Log Pengiriman</div>
+      <div class="nav-item" data-view="riwayat"><span class="num">06</span> Riwayat Job</div>
+      <div class="sidebar-footer">noobiiefun/broadtele<br />multi-akun + multi-bot</div>
     </div>
 
     <div class="main">
       <!-- PENGATURAN -->
       <div class="view active" id="view-pengaturan">
         <div class="view-header"><h2>Pengaturan</h2></div>
-        <div class="view-sub">Diisi sekali di sini — tersimpan otomatis di perangkat ini, tidak perlu edit file apapun.</div>
+        <div class="view-sub">API ID &amp; API Hash dipakai bersama oleh SEMUA akun userbot. Bot ditambahkan sendiri-sendiri di tab "Akun &amp; Bot".</div>
 
         <div class="field" style="max-width:520px">
           <label>API ID <span style="color:var(--muted)">(dari my.telegram.org &rarr; API Development Tools)</span></label>
@@ -44,24 +42,50 @@
             <button type="button" class="ghost toggle-visibility" data-target="cfgApiHash">Tampilkan</button>
           </div>
         </div>
-        <div class="field" style="max-width:520px">
-          <label>Bot Token <span style="color:var(--muted)">(dari @BotFather — opsional, kosongkan kalau tidak pakai Bot API)</span></label>
-          <div style="display:flex; gap:8px;">
-            <input type="password" id="cfgBotToken" placeholder="Contoh: 123456789:AAExxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex:1" />
-            <button type="button" class="ghost toggle-visibility" data-target="cfgBotToken">Tampilkan</button>
-          </div>
-        </div>
 
         <button class="primary" id="saveConfigBtn">Simpan Pengaturan</button>
-        <p class="selection-note" style="margin-top:14px">Setelah API ID &amp; API Hash tersimpan, buka status di pojok kanan atas lalu klik "Login Userbot" untuk menghubungkan akun pribadi.</p>
+        <p class="selection-note" style="margin-top:14px">Setelah API ID &amp; API Hash tersimpan, buka tab <b>Akun &amp; Bot</b> untuk login banyak akun Telegram dan menambahkan banyak bot.</p>
+      </div>
+
+      <!-- AKUN & BOT -->
+      <div class="view" id="view-akunbot">
+        <div class="view-header"><h2>Akun &amp; Bot</h2></div>
+        <div class="view-sub">Login beberapa akun Telegram (userbot) sekaligus dan daftarkan beberapa bot — keduanya bisa dipakai mengirim ke grup atau japri.</div>
+
+        <h3 style="margin:18px 0 6px">Akun Telegram (userbot)</h3>
+        <div class="toolbar">
+          <button id="addAccountBtn" class="primary">+ Tambah Akun (Login)</button>
+          <span class="count" id="accountCount"></span>
+        </div>
+        <div id="accountsTableWrap"></div>
+
+        <h3 style="margin:26px 0 6px">Bot Telegram</h3>
+        <div class="toolbar" style="align-items:flex-end">
+          <div class="field" style="margin:0; min-width:180px">
+            <label>Nama panggilan</label>
+            <input type="text" id="newBotLabel" placeholder="Contoh: Bot Promo" />
+          </div>
+          <div class="field" style="margin:0; flex:1; min-width:280px">
+            <label>Token <span style="color:var(--muted)">(dari @BotFather)</span></label>
+            <input type="password" id="newBotToken" placeholder="123456789:AAExxxx..." />
+          </div>
+          <label style="display:flex; align-items:center; gap:6px; padding-bottom:8px;">
+            <input type="checkbox" id="newBotPolling" checked /> Polling
+          </label>
+          <button id="addBotBtn" class="primary">+ Tambah Bot</button>
+        </div>
+        <p class="selection-note">Polling = bot mendengarkan pesan masuk untuk otomatis mendeteksi grup &amp; kontak baru. Bot tanpa polling tetap bisa dipakai mengirim, cukup invite bot ke grupnya.</p>
+        <div id="botsTableWrap"></div>
       </div>
 
       <!-- GRUP -->
       <div class="view" id="view-grup">
         <div class="view-header"><h2>Grup</h2></div>
-        <div class="view-sub">Grup yang diikuti akun pribadi dan/atau tempat bot berada. Centang untuk dipakai di broadcast grup.</div>
+        <div class="view-sub">Grup dari semua akun yang sudah login + grup tempat bot berada. Centang untuk dipakai di broadcast grup.</div>
         <div class="toolbar">
+          <select id="syncAccountSelect" title="Akun yang akan di-sync"></select>
           <button id="syncBtn">Sync dari Akun Pribadi</button>
+          <select id="syncBotSelect" title="Bot yang dicek keanggotaannya"></select>
           <button id="syncBotMembershipBtn" class="ghost">Sinkronkan Kepanggotaan Bot</button>
           <span class="count" id="grupCount"></span>
         </div>
@@ -71,7 +95,7 @@
       <!-- JAPRI -->
       <div class="view" id="view-japri">
         <div class="view-header"><h2>Japri</h2></div>
-        <div class="view-sub">Kontak personal — termasuk siapa pun yang pernah chat ke bot (otomatis tercatat). Centang untuk dipakai di broadcast japri.</div>
+        <div class="view-sub">Kontak personal dari akun &amp; siapa pun yang pernah chat ke bot (otomatis tercatat). Centang untuk dipakai di broadcast japri.</div>
         <div class="toolbar">
           <span class="count" id="japriCount"></span>
         </div>
@@ -81,7 +105,7 @@
       <!-- BUAT BROADCAST -->
       <div class="view" id="view-buat">
         <div class="view-header"><h2>Buat Broadcast</h2></div>
-        <div class="view-sub">Job dibuat dari target yang sudah dicentang di tab Grup / Japri.</div>
+        <div class="view-sub">Job dibuat dari target yang sudah dicentang di tab Grup / Japri. Pilih pengirim: satu bot tertentu, otomatis, atau akun userbot.</div>
 
         <div class="field" style="max-width:780px">
           <label>Target</label>
@@ -89,6 +113,21 @@
             <label><input type="radio" name="targetType" value="grup" checked /> Grup (<span id="selCountGrup">0</span> dipilih)</label>
             <label><input type="radio" name="targetType" value="japri" /> Japri (<span id="selCountJapri">0</span> dipilih)</label>
           </div>
+        </div>
+
+        <div class="field" style="max-width:780px">
+          <label>Pengirim</label>
+          <div class="radio-row" style="flex-wrap:wrap; gap:14px;">
+            <label><input type="radio" name="senderMode" value="auto" checked /> Otomatis (bot yang terbukti bisa, fallback akun)</label>
+            <label><input type="radio" name="senderMode" value="personal" /> Selalu via akun userbot</label>
+            <label><input type="radio" name="senderMode" value="fixedbot" /> Pakai satu bot pilihan:</label>
+            <select id="jobBotSelect" style="min-width:200px"></select>
+          </div>
+        </div>
+
+        <div class="field" style="max-width:780px">
+          <label>Akun userbot default <span style="color:var(--muted)">(untuk target yang dikirim personal)</span></label>
+          <select id="jobAccountSelect" style="min-width:260px"></select>
         </div>
 
         <div class="field" style="max-width:780px">
@@ -131,7 +170,7 @@
       <!-- RIWAYAT JOB -->
       <div class="view" id="view-riwayat">
         <div class="view-header"><h2>Riwayat Job</h2></div>
-        <div class="view-sub">Semua job yang pernah dibuat. Klik sebuah baris untuk melihat hasil per target, kirim ulang, atau lanjutkan job yang terhenti.</div>
+        <div class="view-sub">Semua job yang pernah dibuat. Klik sebuah baris untuk melihat hasil per target (termasuk pengirim yang dipakai), kirim ulang, atau lanjutkan job yang terhenti.</div>
         <div id="riwayatWrap"></div>
       </div>
     </div>

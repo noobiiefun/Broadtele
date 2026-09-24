@@ -1,6 +1,6 @@
 const {
   getJob, getPendingTargets, updateJobTargetStatus, incrementRetry,
-  updateJobStatus, db,
+  updateJobStatus, db, setTargetBotPermission, getJobAccountId,
 } = require('../db/db');
 const { shuffle } = require('./shuffle');
 const { randomDelayMs, sleep } = require('./delay');
@@ -93,12 +93,27 @@ async function runJob(jobId, { onProgress, maxRetriesPerTarget = 2 } = {}) {
         const fresh = db.prepare('SELECT status FROM broadcast_job_targets WHERE id = ?').get(target.id);
         if (!fresh || fresh.status !== 'pending') continue;
 
-        const sender = target.method === 'bot' ? bot : userbot;
+        // ---- MULTI-AKUN & MULTI-BOT: penentu jalur kirim per baris job ----
         let result;
-        try {
-          result = await sender.sendMessage(target.chat_id, job.message_text);
-        } catch (err) {
-          result = { ok: false, error: err.message || String(err) };
+        if (target.method === 'bot') {
+          if (!target.bot_token_id) {
+            result = { ok: false, error: 'Baris job ini tidak punya bot yang ditugaskan.' };
+          } else if (!bot.isActive(target.bot_token_id)) {
+            result = { ok: false, error: `Bot #${target.bot_token_id} tidak aktif — jalankan dari tab Akun & Bot.` };
+          } else {
+            result = await bot.sendMessage(target.bot_token_id, target.chat_id, job.message_text).catch((err) => ({ ok: false, error: err.message || String(err) }));
+            if (result.ok) setTargetBotPermission(target.target_id, target.bot_token_id, true);
+          }
+        } else {
+          // personal: akun yang ditugaskan di baris ini, atau default job, atau pemilik target
+          const accountId = target.account_id ?? getJobAccountId(jobId) ?? null;
+          if (!accountId) {
+            result = { ok: false, error: 'Tidak ada akun userbot untuk target ini — centang akun atau pilih bot.' };
+          } else if (!userbot.isConnected(accountId)) {
+            result = { ok: false, error: `Akun userbot #${accountId} belum terhubung.` };
+          } else {
+            result = await userbot.sendMessage(accountId, target.chat_id, job.message_text).catch((err) => ({ ok: false, error: err.message || String(err) }));
+          }
         }
 
         if (result.ok) {
