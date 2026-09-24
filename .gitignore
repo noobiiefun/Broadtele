@@ -1,11 +1,9 @@
 # Dependencies
 node_modules/
-
 # Build output
 out/
 dist/
 *.asar
-
 # Database & sessions (sensitive)
 broadtele.db
 broadtele.db-shm
