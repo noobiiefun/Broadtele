@@ -7,7 +7,8 @@ contextBridge.exposeInMainWorld('broadtele', {
   },
   accounts: {
     list: () => ipcRenderer.invoke('accounts:list'),
-    add: (label) => ipcRenderer.invoke('accounts:add', label),
+    // main.js menerima payload { label }.
+    add: (label) => ipcRenderer.invoke('accounts:add', { label }),
     remove: (accountId) => ipcRenderer.invoke('accounts:remove', accountId),
     rename: (payload) => ipcRenderer.invoke('accounts:rename', payload),
     logout: (accountId) => ipcRenderer.invoke('accounts:logout', accountId),
